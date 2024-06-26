@@ -38,11 +38,13 @@ final class Mail
 
     public function send(): bool
     {
-        add_filter('wp_mail_content_type', [$this, 'getHtmlMailContentType']);
-
-        $sent = wp_mail($this->to, $this->subject, $this->getHtml(), $this->getHeaders());
-
-        remove_filter('wp_mail_content_type', [$this, 'getHtmlMailContentType']);
+        if ($this->template) {
+            add_filter('wp_mail_content_type', [$this, 'getHtmlMailContentType']);
+            $sent = wp_mail($this->to, $this->subject, $this->getHtml(), $this->getHeaders());
+            remove_filter('wp_mail_content_type', [$this, 'getHtmlMailContentType']);
+        } else {
+            $sent = wp_mail($this->to, $this->subject, $this->content, $this->getHeaders());
+        }
 
         return $sent;
     }
@@ -135,6 +137,7 @@ final class Mail
         return $this->to;
     }
 
+    /** @return string[] */
     public function getHeaders(): array
     {
         $headers = [];
