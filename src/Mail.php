@@ -2,34 +2,37 @@
 
 namespace OffbeatWP\Mail;
 
+use BadMethodCallException;
 use OffbeatWP\Contracts\View;
 use OffbeatWP\Views\ViewableTrait;
 use TijsVerkoyen\CssToInlineStyles\CssToInlineStyles;
 
-class Mail
+final class Mail
 {
     use ViewableTrait;
 
-    protected $template;
-    protected $args = [];
-    protected $to = null;
-    protected $from = null;
-    protected $fromName = null;
+    /** @var string|string[] */
+    private string|array $to = '';
+    private string $template;
+    private string $subject = '';
+    private string $content = '';
+    private string $from = '';
+    private string $fromName = '';
 
-    public function __construct($template = null)
+    public function __construct(?string $template = null)
     {
-        if (is_null($template)) {
+        if ($template === null) {
             $template = config('app.mail.default_template');
         }
 
-        $this->setTemplate($template);
-
+        $this->template = $template;
         $this->view = offbeat(View::class);
 
         $this->setMailTemplatePath();
     }
 
-    public function setMailTemplatePath()
+    // TODO: Surely there is a better way to do this?
+    public function setMailTemplatePath(): void
     {
         $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3);
         $calledFromFile = $backtrace[1]['file'];
@@ -41,114 +44,116 @@ class Mail
         $this->setRecursiveViewsPath(dirname($calledFromFile), 5);
     }
 
-    public function send(): mixed
+    public function send(): bool
     {
-        add_filter('wp_mail_content_type', [$this, 'setHtmlMailContentType']);
+        add_filter('wp_mail_content_type', [$this, 'getHtmlMailContentType']);
 
-        $body = $this->getHtml();
+        $sent = wp_mail($this->to, $this->subject, $this->getHtml(), $this->getHeaders());
 
-        $mailer = wp_mail($this->getTo(), $this->getSubject(), $body, $this->getHeaders());
+        remove_filter('wp_mail_content_type', [$this, 'getHtmlMailContentType']);
 
-        remove_filter('wp_mail_content_type', [$this, 'setHtmlMailContentType']);
-        return $mailer;
+        return $sent;
     }
 
-
-    public function setHtmlMailContentType()
+    public function getHtmlMailContentType(): string
     {
         return 'text/html';
     }
 
-    public function getHtml()
+    public function getHtml(): string
     {
-        $html = $this->view($this->getTemplate(), $this->args);
+        $html = $this->view($this->template, [
+            'subject' => $this->subject,
+            'content' => $this->content
+        ]);
 
-        $cssToInlineStyles = new CssToInlineStyles();
-        $html = $cssToInlineStyles->convert($html);
-
-        return $html;
+        return (new CssToInlineStyles())->convert($html);
     }
 
-    public function setSubject($subject)
+    public function setSubject(string $subject): void
     {
-        $this->args['subject'] = $subject;
+        $this->subject = $subject;
     }
 
-    public function getSubject()
+    public function getSubject(): string
     {
-        return $this->args['subject'];
+        return $this->subject;
     }
 
-    public function setContent($content)
+    public function setContent(string $content): void
     {
-        $this->args['content'] = $content;
+        $this->content = $content;
     }
 
-    public function setContentFromTemplate($template, $args = [])
+    public function setContentFromTemplate(string $template, array $args = []): void
     {
-        $template = offbeat(View::class)->createTemplate($template);
+        /** @var View $view */
+        $view = offbeat(View::class);
 
-        $this->setContent($template->render($args));
+        if (method_exists($view, 'createTemplate')) {
+            $this->content = $view->createTemplate($template)->render($args);
+        } else {
+            throw new BadMethodCallException('The ' . $view::class . ' class does not hae a createTemplate method.');
+        }
     }
 
-    public function getContent()
+    public function getContent(): string
     {
-        return $this->args['content'];
+        return $this->content;
     }
 
-    public function setTo($to)
+    /** @param string|string[] $to */
+    public function setTo(string|array $to): void
     {
         $this->to = $to;
     }
 
-    public function setFrom($email)
+    public function setFrom(string $email): void
     {
         $this->from = $email;
     }
-    public function getFrom()
+    public function getFrom(): string
     {
         return $this->from;
     }
 
-    public function setFromName($fromName)
+    public function setFromName(string $fromName): void
     {
         $this->fromName = $fromName;
     }
 
-    public function getFromName()
+    public function getFromName(): string
     {
         return $this->fromName;
     }
 
-    public function getTemplate()
+    public function getTemplate(): string
     {
         return $this->template;
     }
 
-    public function setTemplate($template)
+    public function setTemplate(string $template): void
     {
         $this->template = $template;
     }
 
-    public function getTo()
+    /** @return string|string[] */
+    public function getTo(): string|array
     {
         return $this->to;
     }
 
-    public function getHeaders()
+    public function getHeaders(): array
     {
         $headers = [];
 
-        if (!empty($this->getFrom())) {
-            if (!empty($this->getFromName())) {
-                $headers[] = "From: {$this->getFromName()} <{$this->getFrom()}>";
+        if ($this->from) {
+            if ($this->fromName) {
+                $headers[] = "From: {$this->fromName} <{$this->from}>";
             } else {
-                $headers[] = $this->getFrom();
+                $headers[] = $this->from;
             }
         }
-
-        // $headers[] = 'Cc: John Q Codex <jqc@wordpress.org>';
-        // $headers[] = 'Cc: iluvwp@wordpress.org'; // note you can just use a simple email address
 
         return $headers;
     }
