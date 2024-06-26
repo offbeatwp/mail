@@ -16,9 +16,9 @@ final class MailRepository
         return self::$instance;
     }
 
-    public function __construct()
+    private function __construct()
     {
-        $this->registerTemplate('Clean', 'mails/clean');
+
     }
 
     public function registerTemplate(string $name, string $template)

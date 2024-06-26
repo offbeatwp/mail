@@ -27,7 +27,7 @@ final class MailService extends AbstractService
     {
         $templates = [
             [
-                'label' => __('Use default template', 'lynx'),
+                'label' => __('Default'),
                 'value' => '',
             ]
         ];
@@ -44,7 +44,7 @@ final class MailService extends AbstractService
             'fields' => [
                 [
                     'type' => 'select',
-                    'label' => __('Template', 'lynx'),
+                    'label' => __('Template'),
                     'choices' => $templates,
                     'name' => 'mail_template'
                 ]
@@ -69,14 +69,16 @@ final class MailService extends AbstractService
         } elseif (setting('gravityforms_default_template')) {
             $template = setting('gravityforms_default_template');
         } else {
-            $template = 'mails/clean';
+            $template = null;
         }
 
-        $mail = new Mail($template);
-        $mail->setSubject($email['subject']);
-        $mail->setContent($email['message']);
+        if ($template) {
+            $mail = new Mail($template);
+            $mail->setSubject($email['subject']);
+            $mail->setContent($email['message']);
 
-        $email['message'] = $mail->getHtml();
+            $email['message'] = $mail->getHtml();
+        }
 
         return $email;
     }
