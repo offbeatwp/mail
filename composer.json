@@ -1,0 +1,7 @@
+{
+    "require": {
+        "php": ">=8.1",
+        "offbeatwp/framework": ">=2",
+        "tijsverkoyen/css-to-inline-styles": "^2.2"
+    }
+}
