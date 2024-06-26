@@ -3,6 +3,7 @@
 namespace OffbeatWP\Mail;
 
 use BadMethodCallException;
+use InvalidArgumentException;
 use OffbeatWP\Contracts\View;
 use OffbeatWP\Views\ViewableTrait;
 use TijsVerkoyen\CssToInlineStyles\CssToInlineStyles;
@@ -13,35 +14,26 @@ final class Mail
 
     /** @var string|string[] */
     private string|array $to = '';
-    private string $template;
+    private string $template = '';
     private string $subject = '';
     private string $content = '';
     private string $from = '';
     private string $fromName = '';
 
-    public function __construct(?string $template = null)
+    public function __construct(string $template = '')
     {
-        if ($template === null) {
-            $template = config('app.mail.default_template');
+        if (!$template) {
+            $template = config('app.mail.default_template') ?: '';
+        }
+
+        if (!is_string($template)) {
+            throw new InvalidArgumentException('Template configured in in app.mail.default_template must be a string.');
         }
 
         $this->template = $template;
         $this->view = offbeat(View::class);
 
-        $this->setMailTemplatePath();
-    }
-
-    // TODO: Surely there is a better way to do this?
-    public function setMailTemplatePath(): void
-    {
-        $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3);
-        $calledFromFile = $backtrace[1]['file'];
-
-        if (preg_match('#Services/Mail/Repositories/MailRepository.php$#', $calledFromFile)) {
-            $calledFromFile = $backtrace[2]['file'];
-        }
-
-        $this->setRecursiveViewsPath(dirname($calledFromFile), 5);
+        $this->setRecursiveViewsPath(dirname(__DIR__));
     }
 
     public function send(): bool
