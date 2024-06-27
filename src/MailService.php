@@ -62,7 +62,7 @@ final class MailService extends AbstractService
      */
     public function gfNotificationApplyTemplate($email, $messageFormat, $notification)
     {
-        $notificationTemplate = $notification['mail_template'];
+        $notificationTemplate = $notification['mail_template'] ?? null;
 
         if ($notificationTemplate) {
             $template = $notificationTemplate;
