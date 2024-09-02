@@ -19,6 +19,7 @@ final class Mail
     private string $content = '';
     private string $from = '';
     private string $fromName = '';
+    private array $params = [];
 
     public function __construct(string $template = '')
     {
@@ -58,10 +59,20 @@ final class Mail
     {
         $html = $this->view($this->template, [
             'subject' => $this->subject,
-            'content' => $this->content
+            'content' => $this->content,
+            'params' => $this->params
         ]);
 
         return (new CssToInlineStyles())->convert($html);
+    }
+
+    public function getParams(): array
+    {
+        return $this->params;
+    }
+
+    public function setParams(array $params) {
+        $this->params = $params;
     }
 
     public function setSubject(string $subject): void
